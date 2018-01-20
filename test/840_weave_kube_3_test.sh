@@ -194,9 +194,18 @@ VIRTUAL_IP=$($SSH $HOST1 $KUBECTL get service netvirt -o template --template={{.
 assert_raises   "$SSH $HOST1 $KUBECTL exec     $podName -- curl -s -S -f -m 2 http://$VIRTUAL_IP/status >/dev/null"
 assert_raises "! $SSH $HOST1 $KUBECTL exec $denyPodName -- curl -s -S -f -m 2 http://$VIRTUAL_IP/status >/dev/null"
 
+$SSH $HOST1 $KUBECTL get pods -o wide
+
+echo "iptables-save before $HOST2"
+run_on $HOST2 "sudo iptables-save -c"
+
 # host should not be able to reach pods via service virtual IP or NodePort
-assert_raises "! $SSH $HOST1 curl -s -S -f -m 2 http://$VIRTUAL_IP/status >/dev/null"
 assert_raises "! $SSH $HOST1 curl -s -S -f -m 2 http://$HOST2:31138/status >/dev/null"
+
+echo "iptables-save after $HOST2"
+run_on $HOST2 "sudo iptables-save -c"
+
+assert_raises "! $SSH $HOST1 curl -s -S -f -m 2 http://$VIRTUAL_IP/status >/dev/null"
 
 # allow access for nettest-deny
 run_on $HOST1 "$KUBECTL apply -f -" <<EOF
